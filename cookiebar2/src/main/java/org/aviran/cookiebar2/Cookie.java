@@ -9,6 +9,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
+import android.graphics.Rect;
 import android.os.Handler;
 import android.text.TextUtils;
 import android.util.AttributeSet;
@@ -344,8 +345,20 @@ final class Cookie extends LinearLayout implements View.OnTouchListener {
     private float initialDownX = 0f;
     private int mode = 0; //0 - idle, 1 - swiping
 
+    private Boolean isViewInBounds(MotionEvent ev) {
+        Rect outRect = new Rect();
+        int[] location = new int[2];
+        layoutCookie.getDrawingRect(outRect);
+        layoutCookie.getLocationOnScreen(location);
+        outRect.offset(location[0], location[1]);
+        return outRect.contains((int) ev.getRawX(), (int) ev.getRawY());
+    }
+
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
+        if (ev.getAction() == MotionEvent.ACTION_DOWN  && !isViewInBounds(ev)) {
+            return false;
+        }
         if (ev.getAction() == MotionEvent.ACTION_UP || ev.getAction() == MotionEvent.ACTION_CANCEL) {
             if (mode == 1) {
                 mode = 0;
@@ -354,7 +367,7 @@ final class Cookie extends LinearLayout implements View.OnTouchListener {
                 mode = 0;
                 return super.dispatchTouchEvent(ev);
             }
-        } if (ev.getAction() == MotionEvent.ACTION_DOWN) {
+        } else if (ev.getAction() == MotionEvent.ACTION_DOWN) {
             initialDownX = ev.getRawX();
             super.dispatchTouchEvent(ev);
             return onTouch(layoutCookie, ev);
