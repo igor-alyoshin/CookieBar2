@@ -12,11 +12,11 @@ import androidx.core.content.ContextCompat;
 import android.os.Handler;
 import android.text.TextUtils;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.view.animation.Animation;
@@ -47,6 +47,7 @@ final class Cookie extends LinearLayout implements View.OnTouchListener {
     private int animationInBottom;
     private int animationOutTop;
     private int animationOutBottom;
+    private int touchSlop;
     private boolean isAutoDismissEnabled;
     private boolean isSwipeable;
     private CookieBarDismissListener dismissListener;
@@ -98,6 +99,7 @@ final class Cookie extends LinearLayout implements View.OnTouchListener {
             validateLayoutIntegrity();
             initDefaultStyle(getContext());
         }
+        this.touchSlop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
         layoutCookie.setOnTouchListener(this);
     }
 
@@ -337,6 +339,44 @@ final class Cookie extends LinearLayout implements View.OnTouchListener {
                 }
             }
         }, 200);
+    }
+
+    private float initialDownX = 0f;
+    private int mode = 0; //0 - idle, 1 - swiping
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        if (ev.getAction() == MotionEvent.ACTION_UP || ev.getAction() == MotionEvent.ACTION_CANCEL) {
+            if (mode == 1) {
+                mode = 0;
+                return onTouch(layoutCookie, ev);
+            } else {
+                mode = 0;
+                return super.dispatchTouchEvent(ev);
+            }
+        } if (ev.getAction() == MotionEvent.ACTION_DOWN) {
+            initialDownX = ev.getRawX();
+            super.dispatchTouchEvent(ev);
+            return onTouch(layoutCookie, ev);
+        } else if (ev.getAction() == MotionEvent.ACTION_MOVE) {
+            if (mode == 0) {
+                float deltaX = Math.abs(ev.getRawX() - initialDownX);
+                if (deltaX > touchSlop) {
+                    mode = 1;
+                }
+                if (mode == 1) {
+                    return onTouch(layoutCookie, ev);
+                } else {
+                    return super.dispatchTouchEvent(ev);
+                }
+            } else if (mode == 1) {
+                return onTouch(layoutCookie, ev);
+            } else {
+                return super.dispatchTouchEvent(ev);
+            }
+        } else {
+            return super.dispatchTouchEvent(ev);
+        }
     }
 
     @Override
